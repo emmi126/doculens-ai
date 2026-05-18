@@ -1,0 +1,35 @@
+# FastAPI Core
+fastapi>=0.109.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+pydantic[email]>=2.7.4
+pydantic-settings>=2.2.0
+
+# Database
+sqlalchemy>=2.0.23
+psycopg2-binary>=2.9.9
+alembic>=1.12.1
+pgvector>=0.2.4
+
+# Authentication
+python-jose[cryptography]>=3.3.0
+requests>=2.31.0
+
+# AI/ML
+anthropic>=0.40.0
+google-cloud-vision>=3.4.5
+sentence-transformers>=2.7.0
+torch>=2.0.0
+
+# Multi-Agent System (Phase 5)
+langgraph>=0.2.0
+langchain>=0.3.0
+langchain-anthropic>=0.3.0
+
+# Image Processing
+Pillow>=10.1.0
+
+# Utilities
+python-dotenv>=1.0.0
+aiofiles>=23.2.1
+tqdm>=4.66.1
