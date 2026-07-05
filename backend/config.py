@@ -1,5 +1,6 @@
 import os
 from typing import List
+from pydantic import Field
 from pydantic_settings import BaseSettings
 from pathlib import Path
 
@@ -8,7 +9,7 @@ class Settings(BaseSettings):
 
     # API configuration
     app_name: str = "DocuLens AI API"
-    debug: bool = True
+    debug: bool = Field(default=True, validation_alias="DOCULENS_DEBUG")
 
     # CORS configuration
     allowed_origins: List[str] = [
@@ -50,6 +51,7 @@ class Settings(BaseSettings):
 
     # Anthropic API configuration
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
+    anthropic_model: str = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 
     class Config:
         env_file = ".env"
@@ -57,10 +59,6 @@ class Settings(BaseSettings):
 
 # Create global settings instance
 settings = Settings()
-
-# Demo AI fallback defaults to debug mode unless explicitly configured.
-if "ENABLE_DEMO_AI_FALLBACK" not in os.environ:
-    settings.enable_demo_ai_fallback = settings.debug
 
 # Set Google Cloud credentials environment variable
 if settings.google_application_credentials:

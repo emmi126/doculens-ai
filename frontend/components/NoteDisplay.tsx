@@ -29,10 +29,10 @@ export default function NoteDisplay({
     try {
       await navigator.clipboard.writeText(formattedNote);
       setCopied(true);
-      toast.success('已复制到剪贴板');
+      toast.success('Copied to clipboard');
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      toast.error('复制失败');
+      toast.error('Failed to copy');
     }
   };
 
@@ -46,7 +46,7 @@ export default function NoteDisplay({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('笔记已下载');
+    toast.success('Note downloaded');
   };
 
   return (
@@ -55,10 +55,10 @@ export default function NoteDisplay({
       <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg">
         <div className="flex items-center space-x-2">
           <FileText className="w-5 h-5 text-blue-600" />
-          <span className="font-medium text-gray-700">整理后的笔记</span>
+          <span className="font-medium text-gray-700">Formatted note</span>
           {processingTime && (
             <span className="text-sm text-gray-500">
-              (处理时间: {processingTime.toFixed(2)}s)
+              (Processing time: {processingTime.toFixed(2)}s)
             </span>
           )}
         </div>
@@ -68,7 +68,7 @@ export default function NoteDisplay({
             onClick={() => setShowOriginal(!showOriginal)}
             className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
           >
-            {showOriginal ? '隐藏原文' : '查看原文'}
+            {showOriginal ? 'Hide original' : 'View original'}
           </button>
 
           <button
@@ -78,12 +78,12 @@ export default function NoteDisplay({
             {copied ? (
               <>
                 <Check className="w-4 h-4" />
-                <span>已复制</span>
+                <span>Copied</span>
               </>
             ) : (
               <>
                 <Copy className="w-4 h-4" />
-                <span>复制</span>
+                <span>Copy</span>
               </>
             )}
           </button>
@@ -93,7 +93,7 @@ export default function NoteDisplay({
             className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-1"
           >
             <Download className="w-4 h-4" />
-            <span>下载</span>
+            <span>Download</span>
           </button>
         </div>
       </div>
@@ -101,7 +101,7 @@ export default function NoteDisplay({
       {/* Original text (expandable) */}
       {showOriginal && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <h3 className="font-semibold text-gray-700 mb-2">OCR 识别的原始文本：</h3>
+          <h3 className="font-semibold text-gray-700 mb-2">Original OCR text:</h3>
           <pre className="text-sm text-gray-600 whitespace-pre-wrap font-mono">
             {originalText}
           </pre>

@@ -8,18 +8,18 @@ venv/
 env/
 ENV/
 
-# 环境变量
+# Environment variables
 .env
 .env.local
 
-# 上传的文件
+# Uploaded files
 uploads/
 *.jpg
 *.jpeg
 *.png
 *.pdf
 
-# Google Cloud 凭证
+# Google Cloud credentials
 *.json
 credentials/
 
@@ -29,13 +29,13 @@ credentials/
 *.swp
 *.swo
 
-# 日志
+# Logs
 *.log
 
-# 数据库
+# Databases
 *.db
 *.sqlite
 
-# 测试
+# Tests
 .pytest_cache/
 .coverage

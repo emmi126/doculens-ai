@@ -18,38 +18,42 @@ The app has a Next.js frontend, a FastAPI backend, PostgreSQL storage, and pgvec
 ## Requirements
 
 - Python 3.12+
-- Node.js 18+
+- Node.js 20+
 - PostgreSQL 14+ with pgvector
-- Google Cloud Vision credentials
+- Google Cloud project with the Vision API enabled
 - Anthropic API key
-- Auth0 application/API configuration
 
 ## Backend Setup
 
 ```bash
 cd backend
-python -m venv venv
+python3.12 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+```
+
+Authenticate Google Cloud locally with Application Default Credentials:
+
+```bash
+gcloud auth application-default login
+gcloud auth application-default set-quota-project YOUR_PROJECT_ID
 ```
 
 Create `backend/.env`:
 
 ```env
 DATABASE_URL=postgresql://doculens:password@localhost:5432/doculens
-GOOGLE_APPLICATION_CREDENTIALS=credentials/service-account.json
-ANTHROPIC_API_KEY=your_anthropic_key
-AUTH0_DOMAIN=your-domain.auth0.com
-AUTH0_AUDIENCE=your-api-audience
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_MODEL=claude-sonnet-4-6
+DOCULENS_DEBUG=true
 ENABLE_DEMO_AI_FALLBACK=false
 ```
 
-Create the database and apply migrations:
+For deployed environments, configure Google credentials through the hosting platform's service identity rather than a local ADC login.
+
+Create the PostgreSQL database configured by `DATABASE_URL`, then apply the migrations. The database user must be allowed to enable the `pgcrypto` and `vector` extensions.
 
 ```bash
-createdb doculens
-psql -d doculens -c 'CREATE EXTENSION IF NOT EXISTS pgcrypto;'
-psql -d doculens -c 'CREATE EXTENSION IF NOT EXISTS vector;'
 python scripts/run_migration.py migrations/001_initial_schema.sql
 python scripts/run_migration.py migrations/002_add_vector_embeddings.sql
 ```
@@ -73,9 +77,6 @@ Create `frontend/.env.local`:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_AUTH0_DOMAIN=your-domain.auth0.com
-NEXT_PUBLIC_AUTH0_CLIENT_ID=your-client-id
-NEXT_PUBLIC_AUTH0_AUDIENCE=your-api-audience
 ```
 
 Start the frontend:

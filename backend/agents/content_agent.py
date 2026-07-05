@@ -36,61 +36,42 @@ logger = logging.getLogger(__name__)
 
 
 llm = ChatAnthropic(
-    model="claude-sonnet-4-20250514",
+    model=settings.anthropic_model,
     api_key=settings.anthropic_api_key,
     temperature=0.3,
     max_tokens=4096
 )
 
 
-CONTENT_ENHANCEMENT_PROMPT = """你是一个专业的笔记内容优化专家。你的任务是基于历史笔记上下文，增强和优化新笔记内容。
+CONTENT_ENHANCEMENT_PROMPT = """You are a note-content enhancement specialist. Improve a new note using relevant historical notes from the same course.
 
-**你将获得**：
-1. 新笔记的 OCR 文本（已纠错）
-2. 提取的关键概念
-3. 历史相关笔记（来自同一课程的相关内容）
+You will receive corrected OCR text, extracted key concepts, and optional related notes.
 
-**优化任务**：
+Requirements:
+1. Identify genuine conceptual connections and continuations.
+2. Add only context supported by the supplied notes; do not introduce external knowledge.
+3. Create cross-references only when they materially help understanding.
+4. Keep the new note independent and do not copy large passages from historical notes.
+5. Preserve the source language and do not translate by default.
 
-1. **建立概念关联**：
-   - 如果新笔记引用了历史笔记中的概念，标注"（回顾：之前讨论的XX）"
-   - 如果是新概念的延续或应用，说明承上启下的关系
-
-2. **补充上下文**：
-   - 为孤立的概念补充必要的背景
-   - 但不要添加笔记外的知识
-
-3. **创建交叉引用**：
-   - 标注与历史笔记的关联点
-   - 格式："（相关：{笔记标题}）"
-
-4. **概念标注**：
-   - 已学概念标注"（已学）"
-   - 新概念使用**粗体**强调
-
-**输出格式（JSON）**：
+**Output format (JSON)**:
 ```json
 {
-    "enhanced_content": "增强后的笔记内容（Markdown格式）",
+    "enhanced_content": "enhanced note in Markdown",
     "cross_references": [
         {
-            "concept": "概念名称",
-            "reference_title": "引用的历史笔记标题",
-            "relationship": "关系说明",
-            "position": "在新笔记中的位置描述"
+            "concept": "concept name",
+            "reference_title": "referenced note title",
+            "relationship": "relationship description",
+            "position": "location in the new note"
         }
     ],
-    "new_concepts": ["新出现的概念列表"],
-    "reviewed_concepts": ["回顾的已学概念列表"]
+    "new_concepts": ["new concept"],
+    "reviewed_concepts": ["reviewed concept"]
 }
 ```
 
-**重要规则**：
-- 保持新笔记的独立性，不要大段复制历史内容
-- 增强内容应该流畅自然，不突兀
-- 只基于提供的笔记，不添加外部知识
-
-只输出 JSON，确保格式正确。"""
+Return valid JSON only."""
 
 
 def format_rag_context(related_notes: List[RelatedNote]) -> str:
@@ -104,8 +85,8 @@ def format_rag_context(related_notes: List[RelatedNote]) -> str:
     for i, note in enumerate(related_notes, 1):
         similarity_pct = int(note.similarity * 100)
         context_parts.append(
-            f"### 历史笔记 {i}：{note.title}\n"
-            f"*相关度: {similarity_pct}% | 日期: {note.created_at or 'Unknown'}*\n\n"
+            f"### Historical note {i}: {note.title}\n"
+            f"*Similarity: {similarity_pct}% | Date: {note.created_at or 'Unknown'}*\n\n"
             f"{note.excerpt[:500]}...\n\n---"
         )
 
@@ -115,7 +96,7 @@ def format_rag_context(related_notes: List[RelatedNote]) -> str:
 def format_key_concepts(key_concepts: list) -> str:
     """Format key concepts for the LLM prompt."""
     if not key_concepts:
-        return "无明确提取的关键概念"
+        return "No key concepts were identified."
 
     concepts = []
     for concept in key_concepts[:10]:  # Limit to 10 concepts
@@ -223,24 +204,24 @@ async def content_agent(state: NoteProcessingState) -> NoteProcessingState:
         if rag_context or key_concepts:
             try:
                 # Build prompt for content enhancement
-                user_content = f"""**新笔记 OCR 文本**：
+                user_content = f"""**New note OCR text**:
 ```
 {text}
 ```
 
-**提取的关键概念**：
+**Extracted key concepts**:
 {format_key_concepts(key_concepts)}
 """
                 if rag_context:
                     user_content += f"""
 
-**历史相关笔记**：
+**Related historical notes**:
 {rag_context}
 """
 
                 user_content += """
 
-请基于以上信息，优化新笔记内容。输出 JSON 格式。"""
+Enhance the new note using the information above. Return JSON."""
 
                 messages = [
                     SystemMessage(content=CONTENT_ENHANCEMENT_PROMPT),

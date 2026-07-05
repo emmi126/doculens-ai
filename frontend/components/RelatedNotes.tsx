@@ -44,7 +44,7 @@ export default function RelatedNotes({ documentId, token }: RelatedNotesProps) {
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <div className="flex items-center space-x-2 mb-4">
           <Sparkles className="w-5 h-5 text-purple-600 animate-pulse" />
-          <h3 className="font-semibold text-gray-900">相关笔记</h3>
+          <h3 className="font-semibold text-gray-900">Related notes</h3>
         </div>
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
@@ -58,10 +58,10 @@ export default function RelatedNotes({ documentId, token }: RelatedNotesProps) {
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <div className="flex items-center space-x-2 mb-4">
           <Sparkles className="w-5 h-5 text-purple-600" />
-          <h3 className="font-semibold text-gray-900">相关笔记</h3>
+          <h3 className="font-semibold text-gray-900">Related notes</h3>
         </div>
         <p className="text-sm text-gray-500 text-center py-4">
-          暂无相关笔记。继续添加笔记，AI 将自动关联相似内容。
+          No related notes yet. Add more notes and AI will connect similar content automatically.
         </p>
       </div>
     );
@@ -71,9 +71,9 @@ export default function RelatedNotes({ documentId, token }: RelatedNotesProps) {
     <div className="bg-white border border-gray-200 rounded-lg p-6">
       <div className="flex items-center space-x-2 mb-4">
         <Sparkles className="w-5 h-5 text-purple-600" />
-        <h3 className="font-semibold text-gray-900">相关笔记</h3>
+        <h3 className="font-semibold text-gray-900">Related notes</h3>
         <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-          AI 推荐
+          AI suggested
         </span>
       </div>
 
@@ -100,7 +100,7 @@ export default function RelatedNotes({ documentId, token }: RelatedNotesProps) {
             {note.created_at && (
               <div className="flex items-center space-x-1 text-xs text-gray-500">
                 <Calendar className="w-3 h-3" />
-                <span>{new Date(note.created_at).toLocaleDateString('zh-CN')}</span>
+                <span>{new Date(note.created_at).toLocaleDateString('en-CA')}</span>
               </div>
             )}
           </div>
@@ -109,7 +109,7 @@ export default function RelatedNotes({ documentId, token }: RelatedNotesProps) {
 
       <div className="mt-4 pt-4 border-t border-gray-200">
         <p className="text-xs text-gray-500 text-center">
-          基于 AI 向量相似度分析，这些笔记与当前内容最相关
+          These notes are ranked by semantic similarity to the current note.
         </p>
       </div>
     </div>

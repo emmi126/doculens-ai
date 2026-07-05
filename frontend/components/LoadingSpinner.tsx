@@ -7,7 +7,7 @@ interface LoadingSpinnerProps {
 }
 
 export default function LoadingSpinner({
-  message = '处理中...',
+  message = 'Processing...',
   progress = null
 }: LoadingSpinnerProps) {
   return (

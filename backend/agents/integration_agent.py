@@ -31,46 +31,18 @@ logger = logging.getLogger(__name__)
 
 
 llm = ChatAnthropic(
-    model="claude-sonnet-4-20250514",
+    model=settings.anthropic_model,
     api_key=settings.anthropic_api_key,
     temperature=0.3,
     max_tokens=8192  # Larger output for final note
 )
 
 
-INTEGRATION_PROMPT = """你是一个专业的笔记整合专家。将多个处理阶段的结果整合成一份完整、专业的 Markdown 笔记。
+INTEGRATION_PROMPT = """You are a note-integration specialist. Combine outputs from multiple processing stages into a complete, professional Markdown note.
 
-**你将获得**：
-1. 增强后的笔记内容
-2. 关键概念列表
-3. 交叉引用信息
-4. 复习问题和知识卡片
-5. 关键要点
+Use a clear heading hierarchy, logical sections, lists, and tables where appropriate. Format mathematics with LaTeX, code with fenced blocks, important concepts in bold, and quotations as blockquotes. Incorporate useful cross-references naturally. Preserve the source language and do not translate by default.
 
-**整合要求**：
-
-1. **主体结构**：
-   - 清晰的标题层级（#, ##, ###）
-   - 逻辑分段
-   - 使用列表、表格等增强可读性
-
-2. **格式化规范**：
-   - 数学公式：$inline$ 或 $$block$$
-   - 代码：```language
-   - 重要概念：**粗体**
-   - 引用：> 引用块
-
-3. **交叉引用整合**：
-   - 自然地融入正文
-   - 格式："（回顾：相关内容）"或"（相关：笔记标题）"
-
-4. **附录部分**（如果有Q&A内容）：
-   - 添加"## 复习问题"部分
-   - 添加"## 关键要点"部分
-
-**输出**：
-直接输出完整的 Markdown 笔记，不需要 JSON 包装。
-笔记应该专业、易读、便于复习。"""
+Return the complete Markdown note directly, without JSON wrapping or process commentary."""
 
 
 def format_qa_section(qa_items: list, key_points: list) -> str:
@@ -78,13 +50,13 @@ def format_qa_section(qa_items: list, key_points: list) -> str:
     sections = []
 
     if key_points:
-        sections.append("## 📌 关键要点\n")
+        sections.append("## 📌 Key Points\n")
         for i, point in enumerate(key_points, 1):
             sections.append(f"{i}. {point}")
         sections.append("")
 
     if qa_items:
-        sections.append("## ❓ 复习问题\n")
+        sections.append("## ❓ Review Questions\n")
         for i, qa in enumerate(qa_items, 1):
             question = getattr(qa, 'question', str(qa))
             answer = getattr(qa, 'answer', '')
@@ -93,9 +65,9 @@ def format_qa_section(qa_items: list, key_points: list) -> str:
             difficulty_emoji = {"easy": "🟢", "medium": "🟡", "hard": "🔴"}.get(difficulty, "🟡")
 
             sections.append(f"### Q{i} {difficulty_emoji}")
-            sections.append(f"**问题**: {question}\n")
+            sections.append(f"**Question**: {question}\n")
             sections.append(f"<details>")
-            sections.append(f"<summary>查看答案</summary>\n")
+            sections.append(f"<summary>View answer</summary>\n")
             sections.append(f"{answer}")
             sections.append(f"</details>\n")
 
@@ -107,8 +79,8 @@ def format_knowledge_cards(cards: list) -> str:
     if not cards:
         return ""
 
-    sections = ["## 📚 知识卡片\n"]
-    sections.append("| 正面 | 背面 |")
+    sections = ["## 📚 Knowledge Cards\n"]
+    sections.append("| Front | Back |")
     sections.append("|------|------|")
 
     for card in cards[:10]:  # Limit to 10 cards
@@ -138,7 +110,7 @@ def build_integration_prompt(state: NoteProcessingState) -> str:
                 concept_items.append(f"- **{term}**: {definition}")
             else:
                 concept_items.append(f"- **{term}**")
-        concepts_str = "**关键概念**:\n" + "\n".join(concept_items)
+        concepts_str = "**Key concepts**:\n" + "\n".join(concept_items)
 
     # Format cross-references
     cross_refs = state.get("cross_references", [])
@@ -152,7 +124,7 @@ def build_integration_prompt(state: NoteProcessingState) -> str:
                 relation = ref.get("relationship", "")
                 ref_items.append(f"- {concept} → {title}: {relation}")
         if ref_items:
-            refs_str = "**交叉引用**:\n" + "\n".join(ref_items)
+            refs_str = "**Cross-references**:\n" + "\n".join(ref_items)
 
     # Format related notes summary
     related_notes = state.get("related_notes", [])
@@ -162,12 +134,12 @@ def build_integration_prompt(state: NoteProcessingState) -> str:
         for note in related_notes:
             title = getattr(note, 'title', str(note))
             similarity = getattr(note, 'similarity', 0)
-            note_items.append(f"- {title} (相关度: {int(similarity*100)}%)")
-        related_str = "**相关历史笔记**:\n" + "\n".join(note_items)
+            note_items.append(f"- {title} (similarity: {int(similarity*100)}%)")
+        related_str = "**Related historical notes**:\n" + "\n".join(note_items)
 
-    prompt = f"""请将以下内容整合成一份完整的 Markdown 笔记：
+    prompt = f"""Integrate the following material into a complete Markdown note:
 
-**增强后的内容**:
+**Enhanced content**:
 ```
 {enhanced_content}
 ```
@@ -178,7 +150,7 @@ def build_integration_prompt(state: NoteProcessingState) -> str:
 
 {related_str}
 
-请生成专业、结构清晰的 Markdown 笔记。"""
+Generate a professional, clearly structured Markdown note in the source language."""
 
     return prompt
 

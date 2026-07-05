@@ -16,13 +16,13 @@ export default function ImageUploader({ onImageSelect, disabled = false }: Image
   const handleFile = useCallback((file: File) => {
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      toast.error('请上传图片文件');
+      toast.error('Please upload an image file');
       return;
     }
 
     // Validate file size (10MB)
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('文件大小不能超过 10MB');
+      toast.error('The file must be 10 MB or smaller');
       return;
     }
 
@@ -99,10 +99,10 @@ export default function ImageUploader({ onImageSelect, disabled = false }: Image
           <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
 
           <p className="text-lg font-medium text-gray-700 mb-2">
-            拖拽图片到此处，或点击上传
+            Drag an image here, or click to upload
           </p>
           <p className="text-sm text-gray-500">
-            支持 JPG, PNG, JPEG 格式，最大 10MB
+            Supports JPG, PNG, and JPEG up to 10 MB
           </p>
         </div>
       ) : (
@@ -117,7 +117,7 @@ export default function ImageUploader({ onImageSelect, disabled = false }: Image
             <button
               onClick={clearImage}
               className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
-              title="移除图片"
+              title="Remove image"
             >
               <X className="w-5 h-5" />
             </button>
@@ -126,7 +126,7 @@ export default function ImageUploader({ onImageSelect, disabled = false }: Image
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-4">
             <div className="flex items-center text-white text-sm">
               <ImageIcon className="w-4 h-4 mr-2" />
-              <span>图片已选择</span>
+              <span>Image selected</span>
             </div>
           </div>
         </div>

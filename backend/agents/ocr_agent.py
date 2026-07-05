@@ -28,50 +28,51 @@ logger = logging.getLogger(__name__)
 
 # LLM for post-processing OCR results
 llm = ChatAnthropic(
-    model="claude-sonnet-4-20250514",
+    model=settings.anthropic_model,
     api_key=settings.anthropic_api_key,
     temperature=0.2,  # Low temperature for accurate correction
     max_tokens=4096
 )
 
 
-OCR_CORRECTION_PROMPT = """你是一个专业的 OCR 后处理专家。你的任务是分析 OCR 识别的文本，进行纠错和内容识别。
+OCR_CORRECTION_PROMPT = """You are an OCR post-processing specialist. Analyze OCR-recognized text, correct recognition errors, and identify special content.
 
-**任务 1：OCR 纠错**
-修正常见的 OCR 识别错误：
-- 字符混淆（如 0/O, 1/l/I, rn/m）
-- 拼写错误
-- 标点符号错误
-- 断行错误（不该断行的地方断了）
-- 格式错误
+**Task 1: OCR correction**
+Correct common OCR errors:
+- Confused characters such as 0/O, 1/l/I, and rn/m
+- Spelling and punctuation errors
+- Incorrect line breaks
+- Formatting errors
 
-**任务 2：特殊内容识别**
-识别文本中的特殊内容类型：
-1. **数学公式**：包含数学符号、方程式、希腊字母等
-2. **代码块**：编程代码、伪代码
-3. **表格**：结构化数据，对齐的列
-4. **图表引用**：提到"图"、"表"、"Figure"等
+**Task 2: Special-content detection**
+Identify these content types:
+1. **Mathematical formulas** containing symbols, equations, or Greek letters
+2. **Code blocks** containing source code or pseudocode
+3. **Tables** containing structured data or aligned columns
+4. **Diagram references** referring to figures, charts, or tables
 
-**输出格式（JSON）**：
+Preserve the source language and do not translate the text.
+
+**Output format (JSON)**:
 ```json
 {
-    "corrected_text": "纠错后的完整文本",
+    "corrected_text": "complete corrected text",
     "special_contents": [
         {
             "type": "formula|code|table|diagram_ref",
-            "raw_text": "原始OCR文本片段",
-            "processed_text": "处理后的文本（如LaTeX格式的公式）",
-            "position": 起始字符位置,
+            "raw_text": "original OCR fragment",
+            "processed_text": "processed text, such as a formula in LaTeX",
+            "position": 0,
             "confidence": 0.0-1.0
         }
     ],
     "corrections_made": [
-        {"original": "错误文本", "corrected": "正确文本", "reason": "原因"}
+        {"original": "incorrect text", "corrected": "corrected text", "reason": "reason"}
     ]
 }
 ```
 
-只输出 JSON，不要其他解释。"""
+Return valid JSON only, with no additional explanation."""
 
 
 def extract_special_content(text: str) -> List[SpecialContent]:
@@ -211,7 +212,7 @@ async def ocr_agent(state: NoteProcessingState) -> NoteProcessingState:
         try:
             messages = [
                 SystemMessage(content=OCR_CORRECTION_PROMPT),
-                HumanMessage(content=f"请处理以下 OCR 识别结果：\n\n```\n{ocr_text}\n```")
+                HumanMessage(content=f"Process the following OCR result:\n\n```\n{ocr_text}\n```")
             ]
 
             response = await llm.ainvoke(messages)

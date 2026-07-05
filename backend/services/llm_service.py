@@ -9,7 +9,7 @@ class LLMService:
     def __init__(self):
         """Initialize Claude client when an API key is available."""
         self.client = None
-        self.model = "claude-sonnet-4-20250514"
+        self.model = settings.anthropic_model
         if settings.anthropic_api_key:
             self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
         elif settings.enable_demo_ai_fallback:
@@ -56,40 +56,32 @@ Found {related_count} related historical notes for this demo request.
     
     def format_note(self, ocr_text: str, additional_context: str = None) -> str:
         """
-        将 OCR 识别的文本整理成格式化笔记
+        Convert OCR-recognized text into a formatted note.
         
         Args:
-            ocr_text: OCR 识别的原始文本
-            additional_context: 额外的上下文（可选）
+            ocr_text: Raw text recognized by OCR.
+            additional_context: Optional additional context.
         
         Returns:
-            str: 整理后的 Markdown 格式笔记
+            str: The formatted Markdown note.
         """
         
-        # 构建系统提示词
-        system_prompt = """你是一个专业的课堂笔记整理助手。你的任务是将 OCR 识别的课堂笔记文本整理成清晰、结构化的笔记。
+        # Build the system prompt.
+        system_prompt = """You are a professional classroom-note editor. Convert OCR-extracted text into clear, structured notes.
 
-请遵循以下规则：
-1. **修正 OCR 错误**：识别并修正明显的 OCR 识别错误（拼写错误、字符混淆等）
-2. **结构化组织**：
-   - 使用清晰的标题层级（# ## ###）
-   - 将内容分成逻辑段落
-   - 使用列表来组织要点
-3. **保留原意**：不要添加 OCR 文本中没有的内容，但可以：
-   - 补充必要的连接词使语句通顺
-   - 完善不完整的句子
-   - 统一术语表达
-4. **格式化**：
-   - 数学公式使用 LaTeX 格式：$inline$ 或 $$block$$
-   - 代码使用代码块：```language```
-   - 重要概念使用**粗体**
-   - 示例或引用使用 > 引用块
-5. **保持简洁**：去除重复内容，但保留所有关键信息
+Follow these rules:
+1. Correct only obvious OCR errors, such as spelling mistakes or confused characters.
+2. Organize the content with appropriate Markdown headings, paragraphs, and lists.
+3. Preserve the original meaning. Do not invent facts or expand beyond the source text.
+4. You may add minimal connecting words, complete clearly truncated sentences, and normalize terminology when the intended wording is unambiguous.
+5. Format mathematical expressions with LaTeX, code with fenced code blocks, important concepts in bold, and quotations as blockquotes.
+6. Keep the result concise while retaining all source information.
+7. Write in the same language as the OCR source text unless the user's additional context explicitly requests another language. Do not translate the note by default.
 
-输出纯 Markdown 格式，不要添加任何解释性文字。"""
+Return only the formatted Markdown note, without commentary about your process."""
 
-        # 构建用户提示词
-        user_prompt = f"""请整理以下课堂笔记的 OCR 文本：
+        # Build the user prompt.
+        user_prompt = f"""Format the following OCR-extracted classroom note:
 
 ```
 {ocr_text}
@@ -97,9 +89,9 @@ Found {related_count} related historical notes for this demo request.
 """
         
         if additional_context:
-            user_prompt += f"\n\n额外上下文：{additional_context}\n"
+            user_prompt += f"\n\nAdditional context: {additional_context}\n"
         
-        user_prompt += "\n请输出整理后的笔记（Markdown 格式）："
+        user_prompt += "\nReturn the formatted note as Markdown:"
         
         if self.client is None:
             if settings.enable_demo_ai_fallback:
@@ -108,29 +100,29 @@ Found {related_count} related historical notes for this demo request.
             raise Exception("Anthropic API key is not configured")
 
         try:
-            # 调用 Claude API
+            # Call the Claude API.
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=4096,
-                temperature=0.3,  # 较低的温度以保持一致性
+                temperature=0.3,  # Use a lower temperature for consistency.
                 system=system_prompt,
                 messages=[
                     {"role": "user", "content": user_prompt}
                 ]
             )
             
-            # 提取响应文本
+            # Extract response text.
             formatted_note = message.content[0].text
             
-            logger.info(f"LLM 整理成功，输入 {len(ocr_text)} 字符，输出 {len(formatted_note)} 字符")
+            logger.info(f"LLM formatting succeeded: {len(ocr_text)} input characters, {len(formatted_note)} output characters")
             return formatted_note
             
         except Exception as e:
-            logger.error(f"LLM 处理失败: {str(e)}")
+            logger.error(f"LLM processing failed: {str(e)}")
             if settings.enable_demo_ai_fallback:
                 logger.warning("Using demo LLM fallback after formatting failure")
                 return self.demo_format_note(ocr_text, additional_context)
-            raise Exception(f"笔记整理失败: {str(e)}")
+            raise Exception(f"Note formatting failed: {str(e)}")
 
     def format_note_with_rag(
         self,
@@ -140,76 +132,60 @@ Found {related_count} related historical notes for this demo request.
         additional_context: str = None
     ) -> str:
         """
-        使用 RAG 增强的笔记整理：结合历史笔记上下文生成连贯的笔记
+        Format notes with RAG by incorporating historical context into a coherent note.
 
         Args:
-            ocr_text: OCR 识别的原始文本
-            course_name: 课程名称
-            historical_context: 历史笔记上下文，格式为 [{"title": str, "content": str, "created_at": str, "similarity": float}]
-            additional_context: 额外的上下文（可选）
+            ocr_text: Raw text recognized by OCR.
+            course_name: Course name.
+            historical_context: Historical note context as title, content, date, and similarity records.
+            additional_context: Optional additional context.
 
         Returns:
-            str: 整理后的 Markdown 格式笔记（包含历史关联）
+            str: The formatted Markdown note with historical connections.
         """
 
-        # 构建系统提示词（RAG 增强版本）
-        system_prompt = """你是一个专业的课堂笔记整理助手。你的任务是将 OCR 识别的课堂笔记文本整理成清晰、结构化的笔记。
+        # Build the RAG-enhanced system prompt.
+        system_prompt = """You are a professional classroom-note editor. Convert a newly uploaded OCR transcript into a clear, structured Markdown note. You will also receive related notes from the same course as optional historical context.
 
-你将获得：
-1. 新上传的笔记（OCR 文本）
-2. 历史相关笔记（同一门课程的之前内容）
+Formatting rules:
+1. Correct only obvious OCR errors.
+2. Use appropriate Markdown headings, paragraphs, and lists.
+3. Format mathematics with LaTeX, code with fenced blocks, important concepts in bold, and quotations as blockquotes.
+4. Preserve the meaning and information in the newly uploaded note.
+5. Write in the same language as the new OCR text unless the user explicitly requests another language. Do not translate by default.
 
-请遵循以下规则：
+Historical-context rules:
+1. Use historical notes only to disambiguate terminology or identify a genuinely useful connection.
+2. Do not add a historical-reference sentence merely because a similar note was retrieved.
+3. Do not copy substantial historical content into the new note.
+4. Do not introduce knowledge that is absent from the new note and supplied context.
+5. Keep the new note independently understandable and concise.
 
-**基础整理规则**：
-1. **修正 OCR 错误**：识别并修正明显的 OCR 识别错误（拼写错误、字符混淆等）
-2. **结构化组织**：
-   - 使用清晰的标题层级（# ## ###）
-   - 将内容分成逻辑段落
-   - 使用列表来组织要点
-3. **格式化**：
-   - 数学公式使用 LaTeX 格式：$inline$ 或 $$block$$
-   - 代码使用代码块：```language```
-   - 重要概念使用**粗体**
-   - 示例或引用使用 > 引用块
+Return only the formatted Markdown note, without commentary about your process."""
 
-**RAG 增强规则（关键）**：
-1. **建立关联**：如果新笔记引用了历史笔记中的概念，添加简短的说明
-   - 例如："（回顾：上节课讨论的XX概念）"
-2. **补充上下文**：如果新内容是历史概念的延续或应用，简要提及承上启下的关系
-3. **保持真实性**：只基于 OCR 文本和提供的历史笔记，不要添加笔记外的知识
-4. **概念标注**：当新笔记中的术语在历史笔记中已定义，可标注"（已学）"
-
-**重要**：
-- 输出纯 Markdown 格式，不要添加解释性文字
-- 不要过度引用历史内容，保持新笔记的独立性
-- 历史上下文仅用于理解，不要大段复制历史笔记内容
-
-输出纯 Markdown 格式的整理笔记。"""
-
-        # 构建用户提示词
-        user_prompt = f"""**课程名称**：{course_name}
+        # Build the user prompt.
+        user_prompt = f"""**Course**: {course_name}
 
 """
 
-        # 添加历史笔记上下文（如果有）
+        # Add historical note context when available.
         if historical_context and len(historical_context) > 0:
-            user_prompt += "**相关历史笔记**（供参考，了解课程脉络）：\n\n"
+            user_prompt += "**Related historical notes** (optional context):\n\n"
             for i, ctx in enumerate(historical_context, 1):
                 similarity_pct = int(ctx['similarity'] * 100)
-                user_prompt += f"### 历史笔记 {i}：{ctx['title']} \n"
-                user_prompt += f"*日期: {ctx['created_at']} | 相关度: {similarity_pct}%*\n\n"
+                user_prompt += f"### Historical note {i}: {ctx['title']}\n"
+                user_prompt += f"*Date: {ctx['created_at']} | Similarity: {similarity_pct}%*\n\n"
 
-                # 限制历史笔记长度，避免 prompt 过长
+                # Limit historical note length to keep the prompt manageable.
                 content_preview = ctx['content'][:800]
                 if len(ctx['content']) > 800:
-                    content_preview += "\n...(内容已截断)"
+                    content_preview += "\n...(content truncated)"
 
                 user_prompt += f"{content_preview}\n\n"
                 user_prompt += "---\n\n"
 
-        # 添加新笔记 OCR 文本
-        user_prompt += f"""**新上传的笔记**（OCR 识别文本）：
+        # Add the new note's OCR text.
+        user_prompt += f"""**Newly uploaded note** (OCR text):
 
 ```
 {ocr_text}
@@ -217,17 +193,17 @@ Found {related_count} related historical notes for this demo request.
 """
 
         if additional_context:
-            user_prompt += f"\n\n**额外上下文**：{additional_context}\n"
+            user_prompt += f"\n\n**Additional context**: {additional_context}\n"
 
         user_prompt += """
 
-**任务**：
-1. 整理新笔记为结构化 Markdown
-2. 如果新内容与历史笔记相关，添加简短的关联说明（但不要过度引用）
-3. 补充必要的承上启下内容
-4. 保留原始信息，不添加笔记外的知识
+**Task**:
+1. Format the newly uploaded note as structured Markdown.
+2. Preserve its source language and original information.
+3. Use historical context only when it materially clarifies the new note.
+4. Do not add unsupported knowledge.
 
-请输出整理后的笔记（Markdown 格式）："""
+Return the formatted Markdown note:"""
 
         if self.client is None:
             if settings.enable_demo_ai_fallback:
@@ -241,29 +217,29 @@ Found {related_count} related historical notes for this demo request.
             raise Exception("Anthropic API key is not configured")
 
         try:
-            # 调用 Claude API
+            # Call the Claude API.
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=4096,
-                temperature=0.3,  # 较低的温度以保持一致性
+                temperature=0.3,  # Use a lower temperature for consistency.
                 system=system_prompt,
                 messages=[
                     {"role": "user", "content": user_prompt}
                 ]
             )
 
-            # 提取响应文本
+            # Extract response text.
             formatted_note = message.content[0].text
 
             logger.info(
-                f"RAG 增强整理成功 - 输入: {len(ocr_text)} 字符, "
-                f"历史上下文: {len(historical_context) if historical_context else 0} 篇, "
-                f"输出: {len(formatted_note)} 字符"
+                f"RAG formatting succeeded: {len(ocr_text)} input characters, "
+                f"{len(historical_context) if historical_context else 0} historical notes, "
+                f"{len(formatted_note)} output characters"
             )
             return formatted_note
 
         except Exception as e:
-            logger.error(f"RAG 增强整理失败: {str(e)}")
+            logger.error(f"RAG formatting failed: {str(e)}")
             if settings.enable_demo_ai_fallback:
                 logger.warning("Using demo LLM fallback after RAG formatting failure")
                 return self.demo_format_note(
@@ -273,26 +249,23 @@ Found {related_count} related historical notes for this demo request.
                     historical_context=historical_context
                 )
             # Fallback to basic formatting if RAG fails
-            logger.info("回退到基础笔记整理...")
+            logger.info("Falling back to basic note formatting...")
             return self.format_note(ocr_text, additional_context)
 
     def enhance_note_with_qa(self, formatted_note: str) -> dict:
         """
-        基于整理后的笔记生成复习问题（Phase 5 功能预留）
+        Generate review questions from the formatted note (reserved for Phase 5).
         
         Returns:
             dict: {"note": str, "questions": list[str]}
         """
-        system_prompt = """你是一个教育助手。基于给定的笔记，生成 3-5 个复习问题，帮助学生巩固知识。
+        system_prompt = """You are an educational assistant. Generate three to five review questions from the supplied note.
 
-问题应该：
-1. 覆盖笔记的主要概念
-2. 有助于理解而非死记硬背
-3. 难度适中
+The questions should cover its main concepts, promote understanding rather than memorization, and have moderate difficulty. Use the same language as the note.
 
-输出格式：
-Q1: [问题1]
-Q2: [问题2]
+Output format:
+Q1: [question]
+Q2: [question]
 ..."""
 
         try:
@@ -302,13 +275,13 @@ Q2: [问题2]
                 temperature=0.5,
                 system=system_prompt,
                 messages=[
-                    {"role": "user", "content": f"笔记内容：\n\n{formatted_note}\n\n请生成复习问题："}
+                    {"role": "user", "content": f"Note content:\n\n{formatted_note}\n\nGenerate review questions:"}
                 ]
             )
             
             qa_text = message.content[0].text
             
-            # 解析问题
+            # Parse generated questions.
             questions = []
             for line in qa_text.split('\n'):
                 if line.strip().startswith('Q'):
@@ -321,11 +294,11 @@ Q2: [问题2]
             }
             
         except Exception as e:
-            logger.error(f"生成问题失败: {str(e)}")
+            logger.error(f"Question generation failed: {str(e)}")
             return {
                 "note": formatted_note,
                 "questions": []
             }
 
-# 创建单例
+# Create the singleton service instance.
 llm_service = LLMService()

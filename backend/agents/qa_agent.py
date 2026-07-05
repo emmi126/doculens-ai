@@ -33,65 +33,48 @@ logger = logging.getLogger(__name__)
 
 
 llm = ChatAnthropic(
-    model="claude-sonnet-4-20250514",
+    model=settings.anthropic_model,
     api_key=settings.anthropic_api_key,
     temperature=0.5,  # Slightly higher for creativity in questions
     max_tokens=4096
 )
 
 
-QA_GENERATION_PROMPT = """你是一个专业的教育评估专家。基于给定的学习笔记，生成高质量的复习材料。
+QA_GENERATION_PROMPT = """You are an educational assessment specialist. Generate high-quality review material from the supplied study note.
 
-**任务**：
+Tasks:
+1. Generate three to five varied comprehension, application, or analysis questions. Include answers and easy, medium, or hard difficulty labels.
+2. Create five to eight concise knowledge cards with useful classification tags.
+3. Extract three to five independently understandable key points.
+4. Use only the note content, preserve its language, and do not add external knowledge.
 
-1. **生成复习问题（3-5个）**：
-   - 覆盖笔记的主要概念
-   - 问题类型多样：理解型、应用型、分析型
-   - 每个问题标注难度（easy/medium/hard）
-   - 提供参考答案
-
-2. **创建知识卡片（5-8张）**：
-   - 卡片正面：问题、术语或概念
-   - 卡片背面：答案、定义或解释
-   - 添加相关标签便于分类
-
-3. **提取关键要点（3-5个）**：
-   - 笔记中最重要的知识点
-   - 用简洁的一句话概括
-
-**输出格式（JSON）**：
+**Output format (JSON)**:
 ```json
 {
     "qa_items": [
         {
-            "question": "问题内容",
-            "answer": "参考答案",
+            "question": "question",
+            "answer": "reference answer",
             "difficulty": "easy|medium|hard",
-            "concept": "相关概念（可选）"
+            "concept": "optional related concept"
         }
     ],
     "knowledge_cards": [
         {
-            "front": "卡片正面（问题/术语）",
-            "back": "卡片背面（答案/定义）",
-            "tags": ["标签1", "标签2"],
-            "concept": "相关概念（可选）"
+            "front": "question or term",
+            "back": "answer or definition",
+            "tags": ["tag1", "tag2"],
+            "concept": "optional related concept"
         }
     ],
     "key_points": [
-        "关键要点1",
-        "关键要点2"
+        "key point 1",
+        "key point 2"
     ]
 }
 ```
 
-**要求**：
-- 问题应该有助于理解而非死记硬背
-- 知识卡片简洁明了，适合快速复习
-- 关键要点应该是可独立理解的句子
-- 基于笔记内容，不要添加外部知识
-
-只输出 JSON，确保格式正确。"""
+Return valid JSON only."""
 
 
 def format_key_concepts_for_qa(key_concepts: list) -> str:
@@ -108,7 +91,7 @@ def format_key_concepts_for_qa(key_concepts: list) -> str:
         else:
             concepts.append(f"- {term}")
 
-    return "已识别的关键概念：\n" + "\n".join(concepts)
+    return "Identified key concepts:\n" + "\n".join(concepts)
 
 
 def parse_qa_response(response_text: str) -> dict:
@@ -208,16 +191,16 @@ async def qa_agent(state: NoteProcessingState) -> NoteProcessingState:
         document_type = state.get("document_type", "notes")
 
         # Build prompt
-        user_content = f"""**文档类型**: {document_type}
+        user_content = f"""**Document type**: {document_type}
 
-**笔记内容**:
+**Note content**:
 ```
 {content[:3000]}  # Limit content length
 ```
 
 {format_key_concepts_for_qa(key_concepts)}
 
-请基于以上笔记内容，生成复习材料。输出 JSON 格式。"""
+Generate review material from the note above. Return JSON."""
 
         messages = [
             SystemMessage(content=QA_GENERATION_PROMPT),

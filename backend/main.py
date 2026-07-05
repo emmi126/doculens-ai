@@ -79,7 +79,7 @@ app.include_router(documents_router)
 
 @app.get("/", response_model=HealthResponse)
 async def root():
-    """根路径 - 健康检查"""
+    """Root endpoint health check."""
     return HealthResponse(
         status="healthy",
         message="AI Note Processing API is running"
@@ -87,7 +87,7 @@ async def root():
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
-    """健康检查端点"""
+    """Health check endpoint."""
     return HealthResponse(
         status="healthy",
         message="All systems operational"
@@ -96,71 +96,71 @@ async def health_check():
 @app.post("/upload", response_model=UploadResponse)
 async def upload_image(file: UploadFile = File(...)):
     """
-    上传图片文件
+    Upload an image file.
     
     Args:
-        file: 上传的图片文件
+        file: Image file to upload.
     
     Returns:
-        UploadResponse: 上传结果
+        UploadResponse: Upload result.
     """
     try:
-        # 验证文件类型
+        # Validate the file type.
         if not file.content_type.startswith('image/'):
             raise HTTPException(
                 status_code=400,
-                detail="只支持图片文件"
+                detail="Only image files are supported"
             )
         
-        # 读取文件内容
+        # Read the file contents.
         contents = await file.read()
         
-        # 验证文件大小
+        # Validate the file size.
         if len(contents) > settings.max_file_size:
             raise HTTPException(
                 status_code=400,
-                detail=f"文件大小超过限制 ({settings.max_file_size / 1024 / 1024}MB)"
+                detail=f"File exceeds the size limit ({settings.max_file_size / 1024 / 1024} MB)"
             )
         
-        # 生成唯一文件名
+        # Generate a unique filename.
         timestamp = int(time.time() * 1000)
         filename = f"{timestamp}_{file.filename}"
         file_path = os.path.join(settings.upload_dir, filename)
         
-        # 保存文件
+        # Save the file.
         async with aiofiles.open(file_path, 'wb') as f:
             await f.write(contents)
         
-        logger.info(f"文件上传成功: {filename}")
+        logger.info(f"File uploaded successfully: {filename}")
         
         return UploadResponse(
             filename=filename,
-            message="文件上传成功",
+            message="File uploaded successfully",
             file_path=file_path
         )
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"文件上传失败: {str(e)}")
+        logger.error(f"File upload failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/ocr")
 async def ocr_image(file: UploadFile = File(...)):
     """
-    对上传的图片进行 OCR 识别
+    Run OCR on an uploaded image.
     
     Args:
-        file: 上传的图片文件
+        file: Uploaded image file.
     
     Returns:
-        OCRResponse: OCR 识别结果
+        OCRResponse: OCR recognition result.
     """
     try:
-        # 读取文件内容
+        # Read the file contents.
         contents = await file.read()
         
-        # 调用 OCR 服务
+        # Call the OCR service.
         text, confidence = ocr_service.extract_text(contents)
         
         return {
@@ -171,7 +171,7 @@ async def ocr_image(file: UploadFile = File(...)):
         }
         
     except Exception as e:
-        logger.error(f"OCR 处理失败: {str(e)}")
+        logger.error(f"OCR processing failed: {str(e)}")
         return {
             "success": False,
             "text": "",
@@ -358,26 +358,26 @@ async def process_note(
 @app.delete("/uploads/{filename}")
 async def delete_upload(filename: str):
     """
-    删除上传的文件
+    Delete an uploaded file.
 
     Args:
-        filename: 文件名
+        filename: Name of the file to delete.
     """
     try:
         file_path = os.path.join(settings.upload_dir, filename)
 
         if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="文件不存在")
+            raise HTTPException(status_code=404, detail="File not found")
 
         os.remove(file_path)
-        logger.info(f"文件删除成功: {filename}")
+        logger.info(f"File deleted successfully: {filename}")
 
-        return {"message": "文件删除成功"}
+        return {"message": "File deleted successfully"}
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"文件删除失败: {str(e)}")
+        logger.error(f"File deletion failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -631,5 +631,5 @@ if __name__ == "__main__":
         "main:app",
         host="0.0.0.0",
         port=8000,
-        reload=True  # 开发模式下自动重载
+        reload=True  # Enable automatic reload in development mode.
     )

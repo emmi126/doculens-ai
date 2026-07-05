@@ -17,13 +17,13 @@ class OCRResponse(BaseModel):
     error: Optional[str] = None
 
 class ProcessNoteRequest(BaseModel):
-    # 可以扩展，比如添加课程信息
+    # Extend this request with fields such as course information when needed.
     additional_context: Optional[str] = None
 
 class ProcessNoteResponse(BaseModel):
     success: bool
-    original_text: str  # OCR 识别的原始文本
-    formatted_note: str  # LLM 整理后的笔记
+    original_text: str  # Raw text recognized by OCR.
+    formatted_note: str  # Note formatted by the LLM.
     processing_time: float
     document_id: Optional[str] = None  # ID of saved document (for fetching related notes)
     error: Optional[str] = None
